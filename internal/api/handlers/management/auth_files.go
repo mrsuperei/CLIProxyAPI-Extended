@@ -21,6 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/auth/claude"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/auth/codex"
+	copilotauth "github.com/router-for-me/CLIProxyAPI/v6/internal/auth/copilot"
 	geminiAuth "github.com/router-for-me/CLIProxyAPI/v6/internal/auth/gemini"
 	iflowauth "github.com/router-for-me/CLIProxyAPI/v6/internal/auth/iflow"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/auth/qwen"
@@ -1605,6 +1606,88 @@ func (h *Handler) RequestQwenToken(c *gin.Context) {
 
 	setOAuthStatus(state, "")
 	c.JSON(200, gin.H{"status": "ok", "url": authURL, "state": state})
+}
+
+func (h *Handler) RequestGitHubCopilotToken(c *gin.Context) {
+	ctx := context.Background()
+
+	fmt.Println("Initializing GitHub Copilot authentication...")
+
+	state := fmt.Sprintf("cop-%d", time.Now().UnixNano())
+	authSvc := copilotauth.NewCopilotAuth(h.cfg)
+
+	deviceCode, err := authSvc.StartDeviceFlow(ctx)
+	if err != nil {
+		log.WithError(err).Error("failed to start GitHub Copilot device flow")
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "failed to start GitHub Copilot device flow"})
+		return
+	}
+
+	go func() {
+		fmt.Println("Waiting for GitHub Copilot authorization...")
+
+		authBundle, errAuth := authSvc.WaitForAuthorization(ctx, deviceCode)
+		if errAuth != nil {
+			message := copilotauth.GetUserFriendlyMessage(errAuth)
+			fmt.Printf("GitHub Copilot authentication failed: %s\n", message)
+			setOAuthStatus(state, message)
+			return
+		}
+
+		fmt.Println("Verifying GitHub Copilot access...")
+		apiToken, errToken := authSvc.GetCopilotAPIToken(ctx, authBundle.TokenData.AccessToken)
+		if errToken != nil {
+			message := copilotauth.GetUserFriendlyMessage(errToken)
+			fmt.Printf("GitHub Copilot verification failed: %s\n", message)
+			setOAuthStatus(state, message)
+			return
+		}
+
+		tokenStorage := authSvc.CreateTokenStorage(authBundle)
+		metadata := map[string]any{
+			"type":         "copilot",
+			"username":     authBundle.Username,
+			"access_token": authBundle.TokenData.AccessToken,
+			"token_type":   authBundle.TokenData.TokenType,
+			"scope":        authBundle.TokenData.Scope,
+			"timestamp":    time.Now().UnixMilli(),
+		}
+		if apiToken != nil && apiToken.ExpiresAt > 0 {
+			metadata["api_token_expires_at"] = apiToken.ExpiresAt
+		}
+
+		fileName := fmt.Sprintf("copilot-%s.json", authBundle.Username)
+		record := &coreauth.Auth{
+			ID:       fileName,
+			Provider: "copilot",
+			FileName: fileName,
+			Label:    authBundle.Username,
+			Storage:  tokenStorage,
+			Metadata: metadata,
+		}
+		savedPath, errSave := h.saveTokenRecord(ctx, record)
+		if errSave != nil {
+			log.WithError(errSave).Error("failed to save GitHub Copilot authentication tokens")
+			setOAuthStatus(state, "Failed to save authentication tokens")
+			return
+		}
+
+		fmt.Printf("GitHub Copilot authentication successful! Token saved to %s\n", savedPath)
+		deleteOAuthStatus(state)
+	}()
+
+	setOAuthStatus(state, "")
+	resp := gin.H{
+		"status":                    "ok",
+		"state":                     state,
+		"device_code":               deviceCode.DeviceCode,
+		"user_code":                 deviceCode.UserCode,
+		"verification_uri":          deviceCode.VerificationURI,
+		"verification_uri_complete": deviceCode.VerificationURIComplete,
+		"expires_in":                deviceCode.ExpiresIn,
+		"interval":                  deviceCode.Interval,
+	}
+	c.JSON(200, resp)
 }
 
 func (h *Handler) RequestIFlowToken(c *gin.Context) {

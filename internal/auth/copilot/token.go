@@ -56,6 +56,8 @@ type DeviceCodeResponse struct {
 	UserCode string `json:"user_code"`
 	// VerificationURI is the URL where the user should enter the code.
 	VerificationURI string `json:"verification_uri"`
+	// VerificationURIComplete is a convenience URL that pre-fills the user code.
+	VerificationURIComplete string `json:"verification_uri_complete,omitempty"`
 	// ExpiresIn is the number of seconds until the device code expires.
 	ExpiresIn int `json:"expires_in"`
 	// Interval is the minimum number of seconds to wait between polling requests.
