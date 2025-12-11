@@ -22,11 +22,11 @@ const (
 	copilotAPIEndpoint = "https://api.githubcopilot.com"
 
 	// Common HTTP header values for Copilot API requests.
-	copilotUserAgent       = "GithubCopilot/1.0"
-	copilotEditorVersion   = "vscode/1.100.0"
-	copilotPluginVersion   = "copilot/1.300.0"
-	copilotIntegrationID   = "vscode-chat"
-	copilotOpenAIIntent    = "conversation-panel"
+	copilotUserAgent     = "GithubCopilot/1.0"
+	copilotEditorVersion = "vscode/1.100.0"
+	copilotPluginVersion = "copilot/1.300.0"
+	copilotIntegrationID = "vscode-chat"
+	copilotOpenAIIntent  = "conversation-panel"
 )
 
 // CopilotAPIToken represents the Copilot API token response.
@@ -165,7 +165,7 @@ func (c *CopilotAuth) CreateTokenStorage(bundle *CopilotAuthBundle) *CopilotToke
 		TokenType:   bundle.TokenData.TokenType,
 		Scope:       bundle.TokenData.Scope,
 		Username:    bundle.Username,
-		Type:        "github-copilot",
+		Type:        "copilot",
 	}
 }
 
