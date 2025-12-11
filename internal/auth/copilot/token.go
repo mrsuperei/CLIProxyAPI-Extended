@@ -75,7 +75,7 @@ type DeviceCodeResponse struct {
 //   - error: An error if the operation fails, nil otherwise
 func (ts *CopilotTokenStorage) SaveTokenToFile(authFilePath string) error {
 	misc.LogSavingCredentials(authFilePath)
-	ts.Type = "github-copilot"
+	ts.Type = "copilot"
 	if err := os.MkdirAll(filepath.Dir(authFilePath), 0700); err != nil {
 		return fmt.Errorf("failed to create directory: %v", err)
 	}

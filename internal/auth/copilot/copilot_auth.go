@@ -165,7 +165,7 @@ func (c *CopilotAuth) CreateTokenStorage(bundle *CopilotAuthBundle) *CopilotToke
 		TokenType:   bundle.TokenData.TokenType,
 		Scope:       bundle.TokenData.Scope,
 		Username:    bundle.Username,
-		Type:        "copilot",
+		Type:        "github-copilot",
 	}
 }
 
